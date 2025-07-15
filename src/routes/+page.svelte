@@ -104,7 +104,7 @@
                         ];
                     }
                 },
-                pointSize: 0.4,
+                pointSize: 0.5,
                 pickable: true,
                 opacity: 1,
             });
