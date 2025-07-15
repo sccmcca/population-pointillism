@@ -10,12 +10,13 @@
     const CSV_URL = `${base}/pop-points.csv`;
 
     onMount(async () => {
-        console.log("Component mounted, creating map...");
-        console.log("CSV URL:", CSV_URL);
-        
         const map = new maplibregl.Map({
             container: "map",
-            style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+            style: {
+                version: 8,
+                sources: {},
+                layers: []
+            },
             center: [-79.3832, 43.6532],
             zoom: 11,
             pitch: 70,
@@ -24,17 +25,24 @@
         });
 
         map.on("load", async () => {
-            console.log("Map loaded, fetching CSV data...");
-            try {
-                const response = await fetch(CSV_URL);
-                console.log("CSV response:", response.status, response.statusText);
-                const csvText = await response.text();
-                console.log("CSV text length:", csvText.length);
-                const { data: csvData } = Papa.parse(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                });
-                console.log("Parsed CSV data points:", csvData.length);
+            // Add navigation controls (zoom in/out, compass)
+            map.addControl(new maplibregl.NavigationControl(), 'top-right');
+            
+            // Add scale control
+            map.addControl(new maplibregl.ScaleControl({
+                maxWidth: 100,
+                unit: 'metric'
+            }), 'bottom-left');
+            
+            // Add fullscreen control
+            map.addControl(new maplibregl.FullscreenControl(), 'top-right');
+            
+            const response = await fetch(CSV_URL);
+            const csvText = await response.text();
+            const { data: csvData } = Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+            });
 
             const pointData = csvData.map(row => ({
                 coordinates: [
@@ -100,10 +108,6 @@
             });
 
             map.addControl(deckOverlay);
-            console.log("Deck.gl overlay added to map");
-            } catch (error) {
-                console.error("Error loading data or creating visualization:", error);
-            }
         });
     });
 </script>
