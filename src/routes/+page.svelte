@@ -8,8 +8,69 @@
     import Papa from "papaparse";
 
     const CSV_URL = `${base}/pop-points.csv`;
+    let pointData = [];
+    let isDataLoaded = false;
+    let isLoading = true;
+    let error = null;
 
     onMount(async () => {
+        // Load CSV data first
+        try {
+            console.log("Loading CSV from:", CSV_URL);
+            
+            // Add cache busting for GitHub Pages
+            const csvUrl = `${CSV_URL}?v=${Date.now()}`;
+            
+            // Add timeout to prevent hanging
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+            
+            const response = await fetch(csvUrl, {
+                cache: 'no-cache',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                },
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch CSV: ${response.status} ${response.statusText}`);
+            }
+            
+            const csvText = await response.text();
+            console.log("CSV loaded successfully, size:", csvText.length, "characters");
+            
+            const { data: csvData } = Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+            });
+
+            console.log("Parsed CSV data points:", csvData.length);
+
+            pointData = csvData.map((row) => ({
+                coordinates: [
+                    parseFloat(row.longitude || row.lon || row.lng),
+                    parseFloat(row.latitude || row.lat),
+                ],
+                height: parseFloat(row.height || 0),
+            }));
+
+            console.log("Processed point data:", pointData.length, "points");
+            isDataLoaded = true;
+            isLoading = false;
+
+        } catch (error) {
+            console.error("Error loading CSV data:", error);
+            isLoading = false;
+            error = error.message;
+            return; // Don't initialize map if data loading fails
+        }
+
+        // Initialize map after data is loaded
         const map = new maplibregl.Map({
             container: "map",
             style: {
@@ -40,20 +101,13 @@
             // Add fullscreen control
             map.addControl(new maplibregl.FullscreenControl(), "top-right");
 
-            const response = await fetch(CSV_URL);
-            const csvText = await response.text();
-            const { data: csvData } = Papa.parse(csvText, {
-                header: true,
-                skipEmptyLines: true,
-            });
+            // Use the pre-loaded point data
+            if (!isDataLoaded || pointData.length === 0) {
+                console.error("No data available for visualization");
+                return;
+            }
 
-            const pointData = csvData.map((row) => ({
-                coordinates: [
-                    parseFloat(row.longitude || row.lon || row.lng),
-                    parseFloat(row.latitude || row.lat),
-                ],
-                height: parseFloat(row.height || 0),
-            }));
+            console.log("Creating point cloud layer with", pointData.length, "points");
 
             const pointCloudLayer = new PointCloudLayer({
                 id: "point-cloud-layer",
@@ -114,5 +168,18 @@
         });
     });
 </script>
+
+{#if isLoading}
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 18px; z-index: 1000;">
+        Loading population data...
+    </div>
+{/if}
+
+{#if error}
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: red; font-size: 18px; z-index: 1000; text-align: center;">
+        Error loading data: {error}<br>
+        <small>Check console for details</small>
+    </div>
+{/if}
 
 <div id="map" style="width: 100%; height: 100vh; background: black;"></div>
