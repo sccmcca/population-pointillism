@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { base } from "$app/paths";
     import maplibregl from "maplibre-gl";
+    import "maplibre-gl/dist/maplibre-gl.css";
     import { MapboxOverlay } from "@deck.gl/mapbox";
     import { PointCloudLayer } from "@deck.gl/layers";
     import Papa from "papaparse";
@@ -9,6 +10,9 @@
     const CSV_URL = `${base}/pop-points.csv`;
 
     onMount(async () => {
+        console.log("Component mounted, creating map...");
+        console.log("CSV URL:", CSV_URL);
+        
         const map = new maplibregl.Map({
             container: "map",
             style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
@@ -20,12 +24,17 @@
         });
 
         map.on("load", async () => {
-            const response = await fetch(CSV_URL);
-            const csvText = await response.text();
-            const { data: csvData } = Papa.parse(csvText, {
-                header: true,
-                skipEmptyLines: true,
-            });
+            console.log("Map loaded, fetching CSV data...");
+            try {
+                const response = await fetch(CSV_URL);
+                console.log("CSV response:", response.status, response.statusText);
+                const csvText = await response.text();
+                console.log("CSV text length:", csvText.length);
+                const { data: csvData } = Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                });
+                console.log("Parsed CSV data points:", csvData.length);
 
             const pointData = csvData.map(row => ({
                 coordinates: [
@@ -91,6 +100,10 @@
             });
 
             map.addControl(deckOverlay);
+            console.log("Deck.gl overlay added to map");
+            } catch (error) {
+                console.error("Error loading data or creating visualization:", error);
+            }
         });
     });
 </script>
