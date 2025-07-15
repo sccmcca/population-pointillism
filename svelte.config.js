@@ -6,14 +6,14 @@ const dev = process.argv.includes('dev');
 const config = {
     kit: {
         adapter: adapter({
-            pages: 'docs',      // Changed from 'build' to 'docs'
-            assets: 'docs',     // Changed from 'build' to 'docs'
+            pages: 'docs',
+            assets: 'docs',
             fallback: null,
             precompress: false,
             strict: true
         }),
         paths: {
-            base: dev ? '' : process.env.BASE_PATH
+            base: dev ? '' : '/population-pointillism'  // Updated to match your new repo name
         }
     }
 };
