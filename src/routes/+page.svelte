@@ -15,7 +15,7 @@
             style: {
                 version: 8,
                 sources: {},
-                layers: []
+                layers: [],
             },
             center: [-79.3832, 43.6532],
             zoom: 11,
@@ -26,17 +26,20 @@
 
         map.on("load", async () => {
             // Add navigation controls (zoom in/out, compass)
-            map.addControl(new maplibregl.NavigationControl(), 'top-right');
-            
+            map.addControl(new maplibregl.NavigationControl(), "top-right");
+
             // Add scale control
-            map.addControl(new maplibregl.ScaleControl({
-                maxWidth: 100,
-                unit: 'metric'
-            }), 'bottom-left');
-            
+            map.addControl(
+                new maplibregl.ScaleControl({
+                    maxWidth: 100,
+                    unit: "metric",
+                }),
+                "bottom-left",
+            );
+
             // Add fullscreen control
-            map.addControl(new maplibregl.FullscreenControl(), 'top-right');
-            
+            map.addControl(new maplibregl.FullscreenControl(), "top-right");
+
             const response = await fetch(CSV_URL);
             const csvText = await response.text();
             const { data: csvData } = Papa.parse(csvText, {
@@ -44,7 +47,7 @@
                 skipEmptyLines: true,
             });
 
-            const pointData = csvData.map(row => ({
+            const pointData = csvData.map((row) => ({
                 coordinates: [
                     parseFloat(row.longitude || row.lon || row.lng),
                     parseFloat(row.latitude || row.lat),
