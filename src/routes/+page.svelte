@@ -1,11 +1,12 @@
 <script>
     import { onMount } from "svelte";
+    import { base } from "$app/paths";
     import maplibregl from "maplibre-gl";
     import { MapboxOverlay } from "@deck.gl/mapbox";
     import { PointCloudLayer } from "@deck.gl/layers";
     import Papa from "papaparse";
 
-    const CSV_URL = "pop-points.csv";
+    const CSV_URL = `${base}/pop-points.csv`;
 
     onMount(async () => {
         const map = new maplibregl.Map({
