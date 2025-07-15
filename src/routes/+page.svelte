@@ -7,7 +7,7 @@
     import { PointCloudLayer } from "@deck.gl/layers";
     import Papa from "papaparse";
 
-    // const CSV_URL = `${base}/pop-points.csv`;
+    const CSV_URL = `${base}/pop-points.csv`;
 
     onMount(async () => {
         const map = new maplibregl.Map({
