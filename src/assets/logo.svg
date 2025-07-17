@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 414.92 114.82">
+  <defs>
+    <style>
+      .cls-1 {
+        font-size: 29px;
+      }
+
+      .cls-1, .cls-2 {
+        fill: #231f20;
+        font-family: PTSans-Regular, 'PT Sans';
+      }
+
+      .cls-2 {
+        font-size: 17px;
+      }
+
+      .cls-3 {
+        fill: none;
+        stroke: #231f20;
+        stroke-miterlimit: 10;
+        stroke-width: 2px;
+      }
+
+      .cls-4 {
+        letter-spacing: -.08em;
+      }
+
+      .cls-5 {
+        letter-spacing: -.08em;
+      }
+
+      .cls-6 {
+        letter-spacing: -.13em;
+      }
+
+      .cls-7 {
+        letter-spacing: -.02em;
+      }
+
+      .cls-8 {
+        letter-spacing: -.04em;
+      }
+
+      .cls-9 {
+        letter-spacing: -.04em;
+      }
+
+      .cls-10 {
+        letter-spacing: -.03em;
+      }
+
+      .cls-11 {
+        letter-spacing: -.03em;
+      }
+
+      .cls-12 {
+        letter-spacing: -.01em;
+      }
+
+      .cls-13 {
+        letter-spacing: -.01em;
+      }
+
+      .cls-14 {
+        letter-spacing: -.01em;
+      }
+    </style>
+  </defs>
+  <text class="cls-1" transform="translate(101.68 51.78)"><tspan class="cls-8" x="0" y="0">P</tspan><tspan x="15.17" y="0">opulation</tspan><tspan class="cls-8" x=".74" y="34.8">P</tspan><tspan x="15.91" y="34.8">ointillism</tspan></text>
+  <text class="cls-2" transform="translate(257.6 45.78)"><tspan class="cls-9" x="0" y="0">P</tspan><tspan class="cls-12" x="8.89" y="0">e</tspan><tspan x="17.34" y="0">ople </tspan><tspan class="cls-13" x="53.79" y="0">o</tspan><tspan x="62.7" y="0">f the 2021 </tspan><tspan class="cls-10" x="0" y="20.4">C</tspan><tspan x="9.11" y="20.4">ensus in</tspan><tspan class="cls-11" x="68.92" y="20.4"> </tspan><tspan class="cls-6" x="72.93" y="20.4">T</tspan><tspan x="80.19" y="20.4">oron</tspan><tspan class="cls-12" x="113.49" y="20.4">t</tspan><tspan class="cls-13" x="119.07" y="20.4">o</tspan><tspan class="cls-4" x="127.97" y="20.4">,</tspan><tspan x="129.96" y="20.4"> </tspan><tspan x="0" y="40.8">Ontari</tspan><tspan class="cls-14" x="45.46" y="40.8">o</tspan><tspan class="cls-5" x="54.36" y="40.8">,</tspan><tspan x="56.35" y="40.8"> </tspan><tspan class="cls-7" x="60.89" y="40.8">C</tspan><tspan x="70.31" y="40.8">anada</tspan><tspan class="cls-5" x="114.05" y="40.8">.</tspan></text>
+  <circle class="cls-3" cx="48.34" cy="59.62" r="31.15"/>
+</svg>

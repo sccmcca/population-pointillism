@@ -1,38 +1,31 @@
 <script>
+    // Modules and components
     import { onMount } from "svelte";
     import { base } from "$app/paths";
     import maplibregl from "maplibre-gl";
     import "maplibre-gl/dist/maplibre-gl.css";
+    import Logo from "../assets/logo.svg";
+    import Papa from "papaparse";
     import { MapboxOverlay } from "@deck.gl/mapbox";
     import { PointCloudLayer } from "@deck.gl/layers";
-    import Papa from "papaparse";
-
+    import HeightToggle from "$lib/HeightToggle.svelte";
+    import PointSizeSlider from "$lib/PointSizeSlider.svelte";
+    import { colorSchemes } from "$lib/colorSchemes.js";
     import "../assets/styles.css";
 
+    // Initialize variables
+    let map; // Map instance
+    let currentField = "people"; // Default field to color by
+    let deckOverlay; // Deck.gl overlay for point cloud layer
+    let pointData = []; // Array to hold point data from CSV
+    let showBasemap = true; // Show basemap by default
+    let showCanvas = true; // Show canvas by default
+    let heightMultiplier = 1; // Start with extended height
+    let pointSize = 0.4; // Point size for the slider
+    let zoomFactor = 1; // Zoom-based scaling factor
+
+    // URL to the CSV data
     const CSV_URL = `${base}/pop-points-with-gender.csv`;
-
-    // Current field to color by - moved outside onMount so it's reactive
-    let currentField = "density";
-    let deckOverlay;
-    let pointData = [];
-    let showBasemap = true;
-
-    // Define color schemes for different fields
-    const colorSchemes = {
-                density: "custom",
-
-        gender: {
-            m: [0, 255, 255], // Electric cyan
-            f: [255, 20, 255], // Electric magenta
-            default: [220, 220, 220], // Very light gray
-        },
-        age: {
-            young: [0, 255, 0], // Green
-            middle: [255, 255, 0], // Yellow
-            old: [255, 0, 0], // Red
-            default: [128, 128, 128],
-        },
-    };
 
     // Function to create the point cloud layer
     function createPointCloudLayer() {
@@ -42,61 +35,38 @@
             getPosition: (d) => [
                 d.coordinates[0],
                 d.coordinates[1],
-                (d.height || 0) ** 2 * 4000 - 100,
+                ((d.height || 0) ** 2 * 4000 - 100) * heightMultiplier,
             ],
             getColor: (d) => {
-                if (currentField === 'density') {
-                    // Custom density coloring based on height
+                const scheme = colorSchemes[currentField];
+
+                // Continuous color schemes
+                if (scheme?.ranges) {
                     const height = d.height || 0;
-                    if (height < 0.2) {
-                        const t = height / 0.2;
-                        return [
-                            Math.floor(158 + (153 - 158) * t),
-                            Math.floor(1 + (213 - 1) * t),
-                            Math.floor(66 + (148 - 66) * t),
-                        ];
-                    } else if (height < 0.4) {
-                        const t = (height - 0.2) / 0.2;
-                        return [
-                            Math.floor(153 + (230 - 153) * t),
-                            Math.floor(213 + (245 - 213) * t),
-                            Math.floor(148 + (152 - 148) * t),
-                        ];
-                    } else if (height < 0.6) {
-                        const t = (height - 0.4) / 0.2;
-                        return [
-                            Math.floor(230 + (254 - 230) * t),
-                            Math.floor(245 + (224 - 245) * t),
-                            Math.floor(152 + (139 - 152) * t),
-                        ];
-                    } else if (height < 0.8) {
-                        const t = (height - 0.6) / 0.2;
-                        return [
-                            Math.floor(254 + (253 - 254) * t),
-                            Math.floor(224 + (174 - 224) * t),
-                            Math.floor(139 + (97 - 139) * t),
-                        ];
-                    } else {
-                        const t = (height - 0.8) / 0.2;
-                        return [
-                            Math.floor(253 + (213 - 253) * t),
-                            Math.floor(174 + (62 - 174) * t),
-                            Math.floor(97 + (79 - 97) * t),
-                        ];
+                    for (let i = 0; i < scheme.ranges.length; i++) {
+                        const range = scheme.ranges[i];
+                        const min = i === 0 ? 0 : scheme.ranges[i - 1].max;
+                        if (height < range.max) {
+                            const t = (height - min) / (range.max - min);
+                            return range.startColor.map((c, j) =>
+                                Math.floor(c + (range.endColor[j] - c) * t),
+                            );
+                        }
                     }
-                } else {
-                    // Regular color scheme based on field values
-                    const scheme = colorSchemes[currentField];
-                    const value = d[currentField];
-                    const baseColor = scheme[value] || scheme.default;
-                    return baseColor;
+                    return scheme.ranges[scheme.ranges.length - 1].endColor;
                 }
+
+                // Discrete color schemes
+                const value = d[currentField];
+                return scheme[value] || scheme.default;
             },
-            pointSize: 0.4,
-            pickable: true,
-            opacity: .8,
+
+            pointSize: pointSize * zoomFactor, // Apply both slider and zoom scaling
+            opacity: 0.8, // Set opacity for the points
             updateTriggers: {
                 getColor: [currentField], // Force update when currentField changes
+                getPosition: [heightMultiplier], // Force update when height changes
+                pointSize: [pointSize, zoomFactor], // Force update when point size or zoom changes
             },
         });
     }
@@ -116,11 +86,45 @@
         updateLayer();
     }
 
+    // Reactive statement to update layer when heightMultiplier changes
+    $: if (heightMultiplier !== undefined && deckOverlay) {
+        updateLayer();
+    }
+
+    // Reactive statement to update layer when pointSize changes
+    $: if (pointSize !== undefined && deckOverlay) {
+        updateLayer();
+    }
+
+    // Reactive statement to update layer when zoomFactor changes
+    $: if (zoomFactor !== undefined && deckOverlay) {
+        updateLayer();
+    }
+
+    // Zoom factor
+    function calculateZoomFactor(zoom) {
+        const baseZoom = 10.887;
+        const zoomSensitivity = 0.3;
+        return Math.pow(2, (zoom - baseZoom) * zoomSensitivity);
+    }
+
+    // Function to handle pitch toggle
+    function handlePitchToggle(isExtended) {
+        if (map) {
+            const targetPitch = isExtended ? 54 : 0;
+            map.easeTo({
+                pitch: targetPitch,
+                duration: 800,
+            });
+        }
+    }
+
+    // On mount, initialize the map and load data
     onMount(async () => {
-        const map = new maplibregl.Map({
+        map = new maplibregl.Map({
             container: "map",
             style: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
-            center: [-79.4859889, 43.6848220],
+            center: [-79.4859889, 43.684822],
             zoom: 10.887,
             pitch: 54,
             maxPitch: 65,
@@ -128,14 +132,6 @@
         });
 
         map.on("load", async () => {
-            // Console log initial map position
-            console.log('Initial map position:', {
-                center: map.getCenter(),
-                zoom: map.getZoom(),
-                pitch: map.getPitch(),
-                bearing: map.getBearing()
-            });
-
             // Add navigation controls (zoom in/out, compass)
             map.addControl(new maplibregl.NavigationControl(), "top-right");
 
@@ -148,9 +144,10 @@
                 "bottom-left",
             );
 
-            // Add fullscreen control
+            // Add fullscreen ntrol
             map.addControl(new maplibregl.FullscreenControl(), "top-right");
 
+            // Load the CSV data
             const response = await fetch(CSV_URL);
             const csvText = await response.text();
             const { data: csvData } = Papa.parse(csvText, {
@@ -158,6 +155,7 @@
                 skipEmptyLines: true,
             });
 
+            // Process CSV data into pointData array
             pointData = csvData.map((row) => ({
                 coordinates: [
                     parseFloat(row.longitude || row.lon || row.lng),
@@ -175,13 +173,24 @@
 
             map.addControl(deckOverlay);
 
+            // Initialize zoom factor
+            zoomFactor = calculateZoomFactor(map.getZoom());
+
+            // Listen for zoom changes to update point size
+            map.on("zoom", () => {
+                const newZoomFactor = calculateZoomFactor(map.getZoom());
+                if (Math.abs(newZoomFactor - zoomFactor) > 0.01) {
+                    zoomFactor = newZoomFactor;
+                }
+            });
+
             // Log map position changes
-            map.on('moveend', () => {
-                console.log('Map position changed:', {
+            map.on("moveend", () => {
+                console.log("Map position changed:", {
                     center: map.getCenter(),
                     zoom: map.getZoom(),
                     pitch: map.getPitch(),
-                    bearing: map.getBearing()
+                    bearing: map.getBearing(),
                 });
             });
         });
@@ -189,81 +198,136 @@
 </script>
 
 <div id="dashboard">
-    <svg width="300" height="150" viewBox="0 0 280 150">
-        <defs>
-            <path id="curve" d="M 20,120 Q 140,20 260,120" />
-        </defs>
-        <text
-            font-family="Arial, sans-serif"
-            font-size="20"
-            font-weight="bold"
-            fill="black"
-        >
-            <textPath href="#curve">Population Pointillism</textPath>
-        </text>
-    </svg>
-    <p>Explore the population density of Toronto through pointillism.</p>
-    <p>1 point = 5 people</p>
+    <div
+        class="border"
+        style="max-height: 80px; width: 100%; min-width: 300px;"
+    >
+        <img
+            src={Logo}
+            alt="Population Pointillism Logo"
+            class="logo"
+            style="max-width: 300px; margin: 10px"
+        />
+    </div>
+
+    <div class="border" style="height: 100px; overflow: auto;">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+    <br><br>
+            1 point = 5 people
+    </div>
 
     <!-- Field selector toggle -->
     <div class="field-selector">
-        <label for="field-select">Color by:</label>
-        <select id="field-select" bind:value={currentField}>
-            <option value="density">Population Density</option>
-            <option value="gender">Gender</option>
-            <option value="age">People</option>
-        </select>
+        <label>Thematic</label>
+        <div class="field-buttons">
+            <button
+                class:active={currentField === "people"}
+                on:click={() => (currentField = "people")}
+            >
+                People
+            </button>
+            <button
+                class:active={currentField === "density"}
+                on:click={() => (currentField = "density")}
+            >
+                Population Density
+            </button>
+            <button
+                class:active={currentField === "gender"}
+                on:click={() => (currentField = "gender")}
+            >
+                Gender
+            </button>
+            <button
+                class:active={currentField === ""}
+                on:click={() => (currentField = "")}
+                style="display: none;"
+            >
+                Age
+            </button>
+            <button
+                class:active={currentField === ""}
+                on:click={() => (currentField = "")}
+                style="display: none;"
+            >
+                Ethnic Origin
+            </button>
+            <button
+                class:active={currentField === ""}
+                on:click={() => (currentField = "")}
+                style="display: none;"
+            >
+                Income
+            </button>
+
+            <button
+                class:active={currentField === ""}
+                on:click={() => (currentField = "")}
+                style="display: none;"
+            >
+                Transportation
+            </button>
+        </div>
     </div>
-    
-    <!-- Basemap toggle button -->
-    <div class="basemap-toggle">
-        <button on:click={() => showBasemap = !showBasemap}>
-            {showBasemap ? 'Hide' : 'Show'} Basemap
+
+    <div class="height-control">
+    <label>3D</label>
+    <div class="field-buttons" style="flex-direction: column;">
+                <button
+            class:active={heightMultiplier === 1}
+            on:click={() => {
+                heightMultiplier = 1;
+                handlePitchToggle(true);
+            }}
+        >
+            Population Density
+        </button>
+        <button
+            class:active={heightMultiplier === 0}
+            on:click={() => {
+                heightMultiplier = 0;
+                handlePitchToggle(false);
+            }}
+        >
+            Flat
         </button>
     </div>
 </div>
-<div id="map" class:hide-basemap={!showBasemap}></div>
 
-<style>
-    .field-selector {
-        margin: 10px 0;
-    }
+    <!-- Height toggle component -->
+    <div class="height-control">
+        <HeightToggle bind:heightMultiplier onPitchToggle={handlePitchToggle} />
+    </div>
 
-    .field-selector label {
-        margin-right: 10px;
-        font-weight: bold;
-        color: #333;
-    }
+    <!-- Point size slider -->
+    <div class="point-size-control">
+        <PointSizeSlider bind:pointSize />
+    </div>
 
-    .field-selector select {
-        padding: 5px 10px;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-        background: white;
-        font-size: 14px;
-        cursor: pointer;
-    }
-
-    .field-selector select:hover {
-        border-color: #999;
-    }
-
-    .basemap-toggle {
-        margin: 10px 0;
-    }
-
-    .basemap-toggle button {
-        padding: 8px 16px;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-        background: white;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .basemap-toggle button:hover {
-        background: #f0f0f0;
-        border-color: #999;
-    }
-</style>
+    <div class="basemap-controls">
+        <div class="basemap-buttons">
+            <div class="top-buttons">
+                Basemap:
+                <button
+                    class="basemap-btn invert-btn"
+                    on:click={() => (showBasemap = !showBasemap)}
+                >
+                    Invert
+                </button>
+                <button
+                    class="basemap-btn toggle-btn"
+                    class:active={showCanvas}
+                    on:click={() => (showCanvas = !showCanvas)}
+                >
+                    {showCanvas ? "Off" : "On"}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<div
+    id="map"
+    class:hide-basemap={!showBasemap}
+    class:hide-canvas={!showCanvas}
+></div>
